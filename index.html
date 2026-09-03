@@ -1,0 +1,858 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Discipline Tracker</title>
+<style>
+  :root{
+    --bg: #0e1210;
+    --panel: #161c19;
+    --panel-2: #1c2420;
+    --line: #2a352f;
+    --gold: #c9a24b;
+    --green: #4caf7d;
+    --red: #c85c5c;
+    --amber: #c9974b;
+    --text: #e8e6df;
+    --text-dim: #8a938c;
+    --font-display: 'Georgia', 'Iowan Old Style', serif;
+    --font-body: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0; background:var(--bg); color:var(--text);
+    font-family:var(--font-body); padding:20px 14px 60px;
+    -webkit-tap-highlight-color: transparent;
+  }
+  .wrap{max-width:520px; margin:0 auto;}
+
+  h1{
+    font-family:var(--font-display); font-weight:400; font-size:24px;
+    margin:0 0 14px; letter-spacing:0.2px;
+  }
+
+  .tabs{
+    display:flex; gap:6px; margin-bottom:18px; background:var(--panel);
+    border:1px solid var(--line); border-radius:10px; padding:4px;
+  }
+  .tab{
+    flex:1; text-align:center; padding:9px 0; border-radius:7px; font-size:13.5px;
+    cursor:pointer; color:var(--text-dim); user-select:none;
+  }
+  .tab.active{background:var(--panel-2); color:var(--gold); font-weight:600;}
+
+  .date-nav{display:flex; align-items:center; justify-content:center; gap:10px; margin-bottom:16px;}
+  .date-nav button{
+    background:var(--panel-2); border:1px solid var(--line); color:var(--text);
+    width:30px; height:30px; border-radius:6px; font-size:15px; cursor:pointer;
+  }
+  .date-label{font-size:13px; color:var(--text-dim); min-width:140px; text-align:center;}
+
+  .daytype-badge{
+    display:inline-block; font-size:11px; padding:3px 9px; border-radius:20px;
+    background:var(--panel-2); border:1px solid var(--line); color:var(--amber);
+    margin-bottom:14px;
+  }
+
+  .general-rule{
+    display:flex; align-items:center; gap:8px; background:var(--panel-2);
+    border:1px solid var(--gold); border-radius:10px; padding:10px 14px;
+    font-size:12.5px; color:var(--text); margin-bottom:16px; line-height:1.4;
+  }
+  .general-rule .icon{font-size:15px; flex-shrink:0;}
+
+  .stats{display:flex; gap:10px; margin-bottom:18px;}
+  .stat{
+    flex:1; background:var(--panel); border:1px solid var(--line); border-radius:10px;
+    padding:12px 10px; text-align:center;
+  }
+  .stat .num{font-family:var(--font-display); font-size:24px; color:var(--gold);}
+  .stat .label{font-size:11px; color:var(--text-dim); margin-top:2px;}
+
+  .section{
+    background:var(--panel); border:1px solid var(--line); border-radius:12px;
+    margin-bottom:14px; overflow:hidden;
+  }
+  .section-head{
+    padding:12px 16px; border-bottom:1px solid var(--line);
+    display:flex; justify-content:space-between; align-items:center;
+  }
+  .section-head .title{font-size:14px; font-weight:600; color:var(--text);}
+  .section-head .time{font-size:11px; color:var(--text-dim);}
+  .items{padding:4px 8px;}
+  .item{
+    display:flex; align-items:center; gap:12px;
+    padding:10px 8px; border-radius:8px; cursor:pointer;
+    transition:background 0.15s;
+  }
+  .item:active{background:var(--panel-2);}
+  .box{
+    width:20px; height:20px; border-radius:5px; border:1.5px solid var(--line);
+    flex-shrink:0; display:flex; align-items:center; justify-content:center;
+    transition:all 0.15s; background:var(--bg);
+  }
+  .box.checked{background:var(--green); border-color:var(--green);}
+  .box.checked::after{content:"✓"; color:#0e1210; font-size:13px; font-weight:bold;}
+  .item-text{font-size:14.5px; line-height:1.35;}
+  .item.done .item-text{color:var(--text-dim); text-decoration:line-through; text-decoration-color:var(--line);}
+
+  .progress-bar{height:5px; background:var(--line); border-radius:3px; overflow:hidden; margin-top:4px;}
+  .progress-fill{height:100%; background:var(--gold); transition:width 0.3s;}
+
+  .note{
+    font-size:12px; color:var(--text-dim); text-align:center; margin-top:22px; line-height:1.6;
+    font-style:italic;
+  }
+  .reset-link{
+    display:block; text-align:center; margin-top:14px; font-size:12px; color:var(--text-dim);
+    text-decoration:underline; cursor:pointer;
+  }
+  .loading{text-align:center; padding:40px; color:var(--text-dim);}
+
+  /* Weekly view */
+  .week-row{display:flex; flex-direction:column; gap:8px; margin-bottom:18px;}
+  .week-day{
+    display:flex; align-items:center; gap:10px; background:var(--panel);
+    border:1px solid var(--line); border-radius:10px; padding:10px 12px;
+  }
+  .week-day.today{border-color:var(--gold);}
+  .week-day .wd-label{width:74px; font-size:12.5px; flex-shrink:0;}
+  .week-day .wd-label .name{font-weight:600;}
+  .week-day .wd-label .num{color:var(--text-dim); font-size:11px;}
+  .week-day .wd-bar{flex:1; height:8px; background:var(--line); border-radius:4px; overflow:hidden;}
+  .week-day .wd-fill{height:100%; border-radius:4px;}
+  .week-day .wd-pct{width:38px; text-align:right; font-size:12.5px; color:var(--text-dim); flex-shrink:0;}
+
+  /* Monthly view */
+  .cal-grid{display:grid; grid-template-columns:repeat(7,1fr); gap:5px; margin-bottom:16px;}
+  .cal-dow{text-align:center; font-size:10.5px; color:var(--text-dim); padding-bottom:4px;}
+  .cal-cell{
+    aspect-ratio:1; border-radius:6px; display:flex; align-items:center; justify-content:center;
+    font-size:11px; color:var(--text); border:1px solid var(--line);
+  }
+  .cal-cell.empty{border:none; background:transparent;}
+  .cal-cell.future{opacity:0.35;}
+  .legend{display:flex; align-items:center; justify-content:center; gap:6px; font-size:10.5px; color:var(--text-dim); margin-bottom:18px; flex-wrap:wrap;}
+  .legend .sw{width:12px; height:12px; border-radius:3px; display:inline-block;}
+
+  /* Finance */
+  .fin-subtabs{display:flex; gap:6px; margin-bottom:14px;}
+  .fin-subtab{
+    flex:1; text-align:center; padding:7px 0; border-radius:7px; font-size:12.5px;
+    cursor:pointer; color:var(--text-dim); background:var(--panel); border:1px solid var(--line);
+  }
+  .fin-subtab.active{background:var(--panel-2); color:var(--gold); font-weight:600; border-color:var(--gold);}
+  .fin-form{padding:14px 16px;}
+  .fin-row{margin-bottom:12px;}
+  .fin-row label{display:block; font-size:12px; color:var(--text-dim); margin-bottom:5px;}
+  .fin-row input{
+    width:100%; background:var(--bg); border:1px solid var(--line); border-radius:8px;
+    color:var(--text); font-size:15px; padding:9px 10px; font-family:var(--font-body);
+  }
+  .fin-row input:focus{outline:none; border-color:var(--gold);}
+  .fin-save{
+    width:100%; background:var(--gold); color:#0e1210; border:none; border-radius:8px;
+    padding:10px 0; font-size:14px; font-weight:600; cursor:pointer; margin-top:2px;
+  }
+  .fin-save:active{opacity:0.85;}
+  .fin-net{text-align:center; font-size:13px; color:var(--text-dim); margin-top:10px;}
+  .fin-net .val{font-family:var(--font-display); font-size:18px;}
+  .pos{color:var(--green);} .neg{color:var(--red);}
+  .fin-day-row{
+    display:flex; align-items:center; gap:10px; background:var(--panel);
+    border:1px solid var(--line); border-radius:10px; padding:10px 12px; margin-bottom:8px;
+  }
+  .fin-day-row .fd-label{width:74px; font-size:12.5px; flex-shrink:0;}
+  .fin-day-row .fd-label .name{font-weight:600;}
+  .fin-day-row .fd-label .num{color:var(--text-dim); font-size:11px;}
+  .fin-day-row .fd-vals{flex:1; text-align:right; font-size:12.5px;}
+  .fin-day-row .fd-vals .t{color:var(--text-dim); font-size:10.5px; margin-left:6px;}
+
+  /* Login screen */
+  .login-wrap{max-width:340px; margin:60px auto; padding:0 14px;}
+  .login-card{
+    background:var(--panel); border:1px solid var(--line); border-radius:14px;
+    padding:26px 22px;
+  }
+  .login-card h2{font-family:var(--font-display); font-weight:400; font-size:20px; margin:0 0 4px;}
+  .login-card .sub{font-size:12px; color:var(--text-dim); margin-bottom:18px;}
+  .login-card input{
+    width:100%; background:var(--bg); border:1px solid var(--line); border-radius:8px;
+    color:var(--text); font-size:14.5px; padding:10px 11px; font-family:var(--font-body);
+    margin-bottom:10px;
+  }
+  .login-card input:focus{outline:none; border-color:var(--gold);}
+  .login-btn{
+    width:100%; background:var(--gold); color:#0e1210; border:none; border-radius:8px;
+    padding:11px 0; font-size:14px; font-weight:600; cursor:pointer; margin-top:4px;
+  }
+  .login-btn:active{opacity:0.85;}
+  .login-btn.secondary{background:var(--panel-2); color:var(--text); border:1px solid var(--line); margin-top:8px;}
+  .login-error{color:var(--red); font-size:12px; margin-top:10px; min-height:14px;}
+  .login-toggle{text-align:center; font-size:12px; color:var(--text-dim); margin-top:14px; text-decoration:underline; cursor:pointer;}
+  .login-userbar{
+    display:flex; justify-content:space-between; align-items:center;
+    font-size:11.5px; color:var(--text-dim); margin-bottom:10px;
+  }
+  .login-userbar .signout{text-decoration:underline; cursor:pointer;}
+</style>
+
+<!-- Firebase (for cross-device sync). Fill in YOUR_FIREBASE_CONFIG below — see setup notes. -->
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+<script>
+  const firebaseConfig = {
+    apiKey: "AIzaSyBDnfturKmMcCEhN_UZ04kAP6hUTOxmTPU",
+    authDomain: "tracker-412e6.firebaseapp.com",
+    projectId: "tracker-412e6",
+    storageBucket: "tracker-412e6.firebasestorage.app",
+    messagingSenderId: "1031245574504",
+    appId: "1:1031245574504:web:f845cd9f9fa62dc572e6dd"
+  };
+  firebase.initializeApp(firebaseConfig);
+  const auth = firebase.auth();
+  const db = firebase.firestore();
+  auth.setPersistence(firebase.auth.Auth.Persistence.LOCAL);
+</script>
+</head>
+<body>
+<div class="wrap" id="app">
+  <div class="loading">Loading...</div>
+</div>
+
+<script>
+/* ---------- Checklist definitions ---------- */
+const MORNING = [
+  "Woke up at 4:00 AM",
+  "Tesla 3 rule",
+  "Vipassana meditation",
+  "Chart analysis done (no trades)",
+  "Trading plan written (max 3 setups)",
+  "Journal opened and ready"
+];
+
+const S1_WEEKDAY = [
+  "Max 3 trades limit respected",
+  "Stop loss set before entry",
+  "1% risk rule followed",
+  "No revenge trading",
+  "Daily loss limit checked",
+  "Emotional state was calm"
+];
+const S1_WEEKEND = [
+  "Backtesting done",
+  "Trade notes / analysis written"
+];
+
+const S2_WEEKDAY = [
+  "Traded only pre-planned setups",
+  "Stop loss set before entry",
+  "1% risk rule followed",
+  "No revenge trading",
+  "Daily loss limit checked",
+  "Emotional state was calm"
+];
+const S2_WEEKEND = [
+  "Backtesting done",
+  "Reviewed previous trades"
+];
+
+const BREAK = [
+  "Stayed away from screens",
+  "Had a proper meal",
+  "Rested / short nap",
+  "Tesla 6 rule"
+];
+
+const S3_WEEKDAY = [
+  "Traded only pre-planned setup (if any)",
+  "English practice — 45 min",
+  "Trading journal updated"
+];
+const S3_WEEKEND = [
+  "English practice — 45 min",
+  "Weekly trade review updated",
+  "Reading — trading book"
+];
+
+const LITE_WEEKDAY = [
+  "Lite session trades within risk rules",
+  "Stop loss set before entry",
+  "No revenge trading"
+];
+const LITE_WEEKEND = [
+  "Reviewed today's backtests",
+  "Setups prepared for next week"
+];
+
+const EXERCISE_LECTURE = [
+  "Exercise done (ZERO excuse)",
+  "Vipassana / spiritual video watched",
+  "5 litre water completed",
+  "Tomorrow's plan made",
+  "Asleep before 10:30 PM",
+  "10:20 Tesla 9 rule"
+];
+
+function isWeekend(date){
+  const d = date.getDay(); // 0 = Sun, 6 = Sat
+  return d === 0 || d === 6;
+}
+
+function getSections(date){
+  const w = isWeekend(date);
+  return [
+    { key:"morning", title:"Morning", time:"4:00 – 6:00 AM", items: MORNING },
+    { key:"s1", title: w ? "Session 1 — Backtest & Analysis" : "Session 1 — Trading + Analysis", time:"6:30 – 8:15 AM", items: w ? S1_WEEKEND : S1_WEEKDAY },
+    { key:"s2", title: w ? "Session 2 — Backtest & Review" : "Session 2 — Trading + Analysis", time:"8:45 – 11:00 AM", items: w ? S2_WEEKEND : S2_WEEKDAY },
+    { key:"break", title:"Break", time:"11:00 AM – 1:00 PM", items: BREAK },
+    { key:"s3", title: w ? "Session 3 — English, Journal, Reading" : "Session 3 — Trading, English, Journal", time:"1:00 – 4:45 PM", items: w ? S3_WEEKEND : S3_WEEKDAY },
+    { key:"lite", title: w ? "Weekly Wrap-up" : "Lite Trading Session", time:"5:45 – 8:45 PM", items: w ? LITE_WEEKEND : LITE_WEEKDAY },
+    { key:"night", title:"Exercise + Lecture", time:"8:45 – 10:00 PM", items: EXERCISE_LECTURE }
+  ];
+}
+
+function totalItemsForDate(date){
+  return getSections(date).reduce((a,s)=>a+s.items.length,0);
+}
+
+/* ---------- Date helpers ---------- */
+function dateKey(d){
+  const y=d.getFullYear(), m=String(d.getMonth()+1).padStart(2,'0'), day=String(d.getDate()).padStart(2,'0');
+  return `${y}-${m}-${day}`;
+}
+function sameDay(a,b){ return dateKey(a)===dateKey(b); }
+function formatLabel(d){
+  const today = new Date();
+  if(sameDay(d,today)) return "Today";
+  const y = new Date(today); y.setDate(y.getDate()-1);
+  if(sameDay(d,y)) return "Yesterday";
+  const t = new Date(today); t.setDate(t.getDate()+1);
+  if(sameDay(d,t)) return "Tomorrow";
+  return d.toLocaleDateString('en-IN',{day:'numeric', month:'short'});
+}
+function mondayOf(date){
+  const d = new Date(date);
+  const day = d.getDay();
+  const diff = (day===0? -6 : 1-day);
+  d.setDate(d.getDate()+diff);
+  d.setHours(0,0,0,0);
+  return d;
+}
+
+/* ---------- State ---------- */
+let view = 'day'; // 'day' | 'week' | 'month' | 'finance'
+let currentDate = new Date();
+let weekAnchor = new Date();
+let monthAnchor = new Date();
+let dayState = {};
+
+let finView = 'day'; // 'day' | 'week' | 'month'
+let finDate = new Date();
+let finWeekAnchor = new Date();
+let finMonthAnchor = new Date();
+
+/* ---------- Storage helpers (Firestore, per-user) ---------- */
+function userDocRef(collection, key){
+  const uid = auth.currentUser && auth.currentUser.uid;
+  if(!uid) throw new Error('Not signed in');
+  return db.collection('users').doc(uid).collection(collection).doc(key);
+}
+async function fetchDayState(date){
+  try{
+    const snap = await userDocRef('trackerDays', dateKey(date)).get();
+    return snap.exists ? snap.data() : null;
+  }catch(e){ console.error('fetch failed', e); return null; }
+}
+async function saveDayState(date, state){
+  try{
+    await userDocRef('trackerDays', dateKey(date)).set(state);
+  }catch(e){ console.error('save failed', e); }
+}
+
+/* ---------- Finance storage helpers ---------- */
+async function fetchFinState(date){
+  try{
+    const snap = await userDocRef('finance', dateKey(date)).get();
+    return snap.exists ? snap.data() : null;
+  }catch(e){ console.error('fetch failed', e); return null; }
+}
+async function saveFinState(date, state){
+  try{ await userDocRef('finance', dateKey(date)).set(state); }
+  catch(e){ console.error('save failed', e); }
+}
+async function fetchExpState(date){
+  try{
+    const snap = await userDocRef('expenses', dateKey(date)).get();
+    return snap.exists ? snap.data() : null;
+  }catch(e){ console.error('fetch failed', e); return null; }
+}
+async function saveExpState(date, state){
+  try{ await userDocRef('expenses', dateKey(date)).set(state); }
+  catch(e){ console.error('save failed', e); }
+}
+function fmtMoney(n){
+  const v = Number(n)||0;
+  const sign = v<0 ? '-' : '';
+  return sign + '₹' + Math.abs(v).toLocaleString('en-IN');
+}
+
+/* ---------- Rendering: root ---------- */
+async function renderRoot(){
+  const app = document.getElementById('app');
+  const userEmail = auth.currentUser ? auth.currentUser.email : '';
+  app.innerHTML = `
+    <div class="login-userbar"><span>${userEmail}</span><span class="signout" onclick="doSignOut()">Sign out</span></div>
+    <h1>Discipline Tracker</h1>
+    <div class="tabs">
+      <div class="tab ${view==='day'?'active':''}" onclick="switchView('day')">Today</div>
+      <div class="tab ${view==='week'?'active':''}" onclick="switchView('week')">Week</div>
+      <div class="tab ${view==='month'?'active':''}" onclick="switchView('month')">Month</div>
+      <div class="tab ${view==='finance'?'active':''}" onclick="switchView('finance')">Finance</div>
+    </div>
+    <div id="view-body"><div class="loading">Loading...</div></div>
+  `;
+  if(view==='day') await renderDayView();
+  else if(view==='week') await renderWeekView();
+  else if(view==='month') await renderMonthView();
+  else await renderFinanceRoot();
+}
+
+function switchView(v){
+  view = v;
+  renderRoot();
+}
+
+/* ---------- DAY VIEW ---------- */
+async function renderDayView(){
+  dayState = await fetchDayState(currentDate) || {};
+  paintDayView();
+}
+
+function paintDayView(){
+  const body = document.getElementById('view-body');
+  const sections = getSections(currentDate);
+  const total = totalItemsForDate(currentDate);
+  const done = Object.values(dayState).filter(Boolean).length;
+  const weekend = isWeekend(currentDate);
+
+  let html = `
+    <div class="date-nav">
+      <button onclick="changeDay(-1)">‹</button>
+      <span class="date-label">${formatLabel(currentDate)} · ${currentDate.toLocaleDateString('en-IN',{day:'numeric',month:'short',year:'numeric'})}</span>
+      <button onclick="changeDay(1)">›</button>
+    </div>
+    <div style="text-align:center;">
+      <span class="daytype-badge">${weekend ? 'Weekend mode — backtest & review' : 'Weekday mode — live trading'}</span>
+    </div>
+    <div class="general-rule"><span class="icon">⏱</span><span>Be present 5–10 min before every session starts — every day, including Sat/Sun.</span></div>
+    <div class="stats">
+      <div class="stat"><div class="num" id="streak-num">–</div><div class="label">Day streak</div></div>
+      <div class="stat"><div class="num">${total?Math.round(done/total*100):0}%</div><div class="label">Today's completion</div></div>
+    </div>
+  `;
+
+  sections.forEach(section=>{
+    const secTotal = section.items.length;
+    const secDone = section.items.filter((_,i)=>dayState[section.key+':'+i]).length;
+    html += `<div class="section">
+      <div class="section-head">
+        <span class="title">${section.title}</span>
+        <span class="time">${section.time}</span>
+      </div>
+      <div class="items">`;
+    section.items.forEach((text,i)=>{
+      const itemKey = section.key+':'+i;
+      const checked = !!dayState[itemKey];
+      html += `<div class="item ${checked?'done':''}" data-item="${itemKey}" onclick="toggleItem('${itemKey}')">
+        <div class="box ${checked?'checked':''}"></div>
+        <div class="item-text">${text}</div>
+      </div>`;
+    });
+    html += `</div>
+      <div style="padding:0 16px 12px;">
+        <div class="progress-bar"><div class="progress-fill" style="width:${(secDone/secTotal*100)}%"></div></div>
+      </div>
+    </div>`;
+  });
+
+  html += `
+    <div class="note">"100–200 blown accounts didn't mean failure — it meant there was no system.<br>From today, there's a system."</div>
+    <div class="reset-link" onclick="resetDay()">Reset this day's data</div>
+  `;
+  body.innerHTML = html;
+  computeStreak();
+}
+
+async function toggleItem(itemKey){
+  dayState[itemKey] = !dayState[itemKey];
+  await saveDayState(currentDate, dayState);
+  paintDayView();
+}
+
+async function resetDay(){
+  if(!confirm('Reset the entire checklist for this day?')) return;
+  dayState = {};
+  await saveDayState(currentDate, dayState);
+  paintDayView();
+}
+
+function changeDay(delta){
+  currentDate.setDate(currentDate.getDate()+delta);
+  renderDayView();
+}
+
+async function computeStreak(){
+  let streak = 0;
+  let cursor = new Date();
+  cursor.setHours(0,0,0,0);
+  for(let i=0;i<365;i++){
+    const st = await fetchDayState(cursor);
+    const total = totalItemsForDate(cursor);
+    if(!st) break;
+    const checkedCount = Object.values(st).filter(Boolean).length;
+    if(checkedCount < total) break;
+    streak++;
+    cursor.setDate(cursor.getDate()-1);
+  }
+  const el = document.getElementById('streak-num');
+  if(el) el.textContent = streak;
+}
+
+/* ---------- WEEK VIEW ---------- */
+async function renderWeekView(){
+  const body = document.getElementById('view-body');
+  body.innerHTML = '<div class="loading">Loading...</div>';
+  const monday = mondayOf(weekAnchor);
+  const days = [];
+  for(let i=0;i<7;i++){
+    const d = new Date(monday);
+    d.setDate(d.getDate()+i);
+    days.push(d);
+  }
+  const dayNames = ["Mon","Tue","Wed","Thu","Fri","Sat","Sun"];
+  const today = new Date();
+  let rows = '';
+  let weekTotalDone = 0, weekTotalItems = 0, daysWithData = 0;
+
+  for(let i=0;i<7;i++){
+    const d = days[i];
+    const isFuture = d > today && !sameDay(d,today);
+    let pct = 0, done = 0, total = totalItemsForDate(d);
+    if(!isFuture){
+      const st = await fetchDayState(d);
+      if(st){
+        done = Object.values(st).filter(Boolean).length;
+        daysWithData++;
+      }
+      pct = total ? Math.round(done/total*100) : 0;
+      weekTotalDone += done;
+      weekTotalItems += total;
+    }
+    const color = isFuture ? 'var(--line)' : (pct>=100?'var(--green)':pct>=50?'var(--gold)':pct>0?'var(--amber)':'var(--red)');
+    rows += `<div class="week-day ${sameDay(d,today)?'today':''}">
+      <div class="wd-label"><div class="name">${dayNames[i]}</div><div class="num">${d.getDate()}/${d.getMonth()+1}</div></div>
+      <div class="wd-bar"><div class="wd-fill" style="width:${isFuture?0:pct}%; background:${color};"></div></div>
+      <div class="wd-pct">${isFuture?'—':pct+'%'}</div>
+    </div>`;
+  }
+
+  const weekAvg = weekTotalItems ? Math.round(weekTotalDone/weekTotalItems*100) : 0;
+  const rangeLabel = `${monday.toLocaleDateString('en-IN',{day:'numeric',month:'short'})} – ${days[6].toLocaleDateString('en-IN',{day:'numeric',month:'short'})}`;
+
+  body.innerHTML = `
+    <div class="date-nav">
+      <button onclick="changeWeek(-1)">‹</button>
+      <span class="date-label">${rangeLabel}</span>
+      <button onclick="changeWeek(1)">›</button>
+    </div>
+    <div class="stats">
+      <div class="stat"><div class="num">${weekAvg}%</div><div class="label">Weekly average</div></div>
+      <div class="stat"><div class="num">${daysWithData}/7</div><div class="label">Days tracked</div></div>
+    </div>
+    <div class="week-row">${rows}</div>
+    <div class="note">Weekdays = live trading rules · Sat/Sun = backtesting, reading & weekly trade review</div>
+  `;
+}
+
+function changeWeek(delta){
+  weekAnchor.setDate(weekAnchor.getDate()+delta*7);
+  renderWeekView();
+}
+
+/* ---------- MONTH VIEW ---------- */
+async function renderMonthView(){
+  const body = document.getElementById('view-body');
+  body.innerHTML = '<div class="loading">Loading...</div>';
+
+  const year = monthAnchor.getFullYear();
+  const month = monthAnchor.getMonth();
+  const firstDay = new Date(year, month, 1);
+  const daysInMonth = new Date(year, month+1, 0).getDate();
+  const startOffset = (firstDay.getDay()+6)%7;
+  const today = new Date();
+
+  let cells = '';
+  ["Mon","Tue","Wed","Thu","Fri","Sat","Sun"].forEach(n=>{
+    cells += `<div class="cal-dow">${n}</div>`;
+  });
+  for(let i=0;i<startOffset;i++){
+    cells += `<div class="cal-cell empty"></div>`;
+  }
+
+  let monthTotalDone=0, monthTotalItems=0, perfectDays=0, trackedDays=0;
+
+  for(let day=1; day<=daysInMonth; day++){
+    const d = new Date(year, month, day);
+    const isFuture = d > today && !sameDay(d,today);
+    let pct = 0, bg = 'var(--panel-2)';
+    if(!isFuture){
+      const st = await fetchDayState(d);
+      const total = totalItemsForDate(d);
+      if(st){
+        const done = Object.values(st).filter(Boolean).length;
+        pct = total ? Math.round(done/total*100) : 0;
+        monthTotalDone += done;
+        monthTotalItems += total;
+        trackedDays++;
+        if(pct>=100) perfectDays++;
+      }
+      bg = pct>=100 ? 'var(--green)' : pct>=50 ? 'var(--gold)' : pct>0 ? 'var(--amber)' : 'var(--line)';
+    }
+    cells += `<div class="cal-cell ${isFuture?'future':''}" style="background:${isFuture?'transparent':bg}; ${isFuture?'':'color:#0e1210; font-weight:600;'}">${day}</div>`;
+  }
+
+  const monthAvg = monthTotalItems ? Math.round(monthTotalDone/monthTotalItems*100) : 0;
+  const monthLabel = firstDay.toLocaleDateString('en-IN',{month:'long', year:'numeric'});
+
+  body.innerHTML = `
+    <div class="date-nav">
+      <button onclick="changeMonth(-1)">‹</button>
+      <span class="date-label">${monthLabel}</span>
+      <button onclick="changeMonth(1)">›</button>
+    </div>
+    <div class="stats">
+      <div class="stat"><div class="num">${monthAvg}%</div><div class="label">Monthly average</div></div>
+      <div class="stat"><div class="num">${perfectDays}</div><div class="label">Perfect days (100%)</div></div>
+    </div>
+    <div class="cal-grid">${cells}</div>
+    <div class="legend">
+      <span class="sw" style="background:var(--red);"></span> 0%
+      <span class="sw" style="background:var(--amber); margin-left:8px;"></span> 1–49%
+      <span class="sw" style="background:var(--gold); margin-left:8px;"></span> 50–99%
+      <span class="sw" style="background:var(--green); margin-left:8px;"></span> 100%
+    </div>
+  `;
+}
+
+function changeMonth(delta){
+  monthAnchor.setMonth(monthAnchor.getMonth()+delta);
+  renderMonthView();
+}
+
+/* ---------- FINANCE VIEW ---------- */
+async function renderFinanceRoot(){
+  const body = document.getElementById('view-body');
+  body.innerHTML = `
+    <div class="fin-subtabs">
+      <div class="fin-subtab ${finView==='day'?'active':''}" onclick="switchFinView('day')">Day</div>
+      <div class="fin-subtab ${finView==='week'?'active':''}" onclick="switchFinView('week')">Week</div>
+      <div class="fin-subtab ${finView==='month'?'active':''}" onclick="switchFinView('month')">Month</div>
+    </div>
+    <div id="fin-body"><div class="loading">Loading...</div></div>
+  `;
+  if(finView==='day') await renderFinDay();
+  else if(finView==='week') await renderFinRange('week');
+  else await renderFinRange('month');
+}
+
+function switchFinView(v){
+  finView = v;
+  renderFinanceRoot();
+}
+
+async function renderFinDay(){
+  const body = document.getElementById('fin-body');
+  const fin = await fetchFinState(finDate) || {pnl:'', brokerage:'', trades:''};
+  const exp = await fetchExpState(finDate) || {amount:''};
+  const net = (Number(fin.pnl)||0) - (Number(fin.brokerage)||0);
+
+  body.innerHTML = `
+    <div class="date-nav">
+      <button onclick="changeFinDay(-1)">‹</button>
+      <span class="date-label">${formatLabel(finDate)} · ${finDate.toLocaleDateString('en-IN',{day:'numeric',month:'short',year:'numeric'})}</span>
+      <button onclick="changeFinDay(1)">›</button>
+    </div>
+    <div class="section">
+      <div class="section-head"><span class="title">Trading P&L</span></div>
+      <div class="fin-form">
+        <div class="fin-row"><label>Profit / Loss (₹, use − for loss)</label><input type="number" id="fin-pnl" value="${fin.pnl}" placeholder="e.g. 1500 or -800"></div>
+        <div class="fin-row"><label>Brokerage / Charges (₹)</label><input type="number" id="fin-brok" value="${fin.brokerage}" placeholder="e.g. 120"></div>
+        <div class="fin-row"><label>Number of trades</label><input type="number" id="fin-trades" value="${fin.trades}" placeholder="e.g. 4"></div>
+        <button class="fin-save" onclick="saveFinDay()">Save</button>
+        <div class="fin-net">Net (P&L − Brokerage): <span class="val ${net>=0?'pos':'neg'}">${fmtMoney(net)}</span></div>
+      </div>
+    </div>
+    <div class="section">
+      <div class="section-head"><span class="title">Daily Expenses</span><span class="time">separate from P&L</span></div>
+      <div class="fin-form">
+        <div class="fin-row"><label>Amount spent today (₹)</label><input type="number" id="exp-amt" value="${exp.amount}" placeholder="e.g. 400"></div>
+        <button class="fin-save" onclick="saveExpDay()">Save</button>
+      </div>
+    </div>
+  `;
+}
+
+async function saveFinDay(){
+  const pnl = document.getElementById('fin-pnl').value;
+  const brokerage = document.getElementById('fin-brok').value;
+  const trades = document.getElementById('fin-trades').value;
+  await saveFinState(finDate, {pnl, brokerage, trades});
+  renderFinDay();
+}
+
+async function saveExpDay(){
+  const amount = document.getElementById('exp-amt').value;
+  await saveExpState(finDate, {amount});
+  renderFinDay();
+}
+
+function changeFinDay(delta){
+  finDate.setDate(finDate.getDate()+delta);
+  renderFinDay();
+}
+
+async function renderFinRange(mode){
+  const body = document.getElementById('fin-body');
+  body.innerHTML = '<div class="loading">Loading...</div>';
+
+  let days = [];
+  let rangeLabel = '';
+  if(mode==='week'){
+    const monday = mondayOf(finWeekAnchor);
+    for(let i=0;i<7;i++){ const d=new Date(monday); d.setDate(d.getDate()+i); days.push(d); }
+    rangeLabel = `${monday.toLocaleDateString('en-IN',{day:'numeric',month:'short'})} – ${days[6].toLocaleDateString('en-IN',{day:'numeric',month:'short'})}`;
+  } else {
+    const year = finMonthAnchor.getFullYear(), month = finMonthAnchor.getMonth();
+    const daysInMonth = new Date(year, month+1, 0).getDate();
+    for(let d=1; d<=daysInMonth; d++){ days.push(new Date(year, month, d)); }
+    rangeLabel = new Date(year,month,1).toLocaleDateString('en-IN',{month:'long', year:'numeric'});
+  }
+
+  const today = new Date();
+  const dayNames = ["Mon","Tue","Wed","Thu","Fri","Sat","Sun"];
+  let totalPnl=0, totalBrok=0, totalTrades=0, totalExp=0, rows='';
+
+  for(const d of days){
+    if(d > today && !sameDay(d,today)) continue;
+    const fin = await fetchFinState(d);
+    const exp = await fetchExpState(d);
+    const pnl = fin ? (Number(fin.pnl)||0) : 0;
+    const brok = fin ? (Number(fin.brokerage)||0) : 0;
+    const trades = fin ? (Number(fin.trades)||0) : 0;
+    const expAmt = exp ? (Number(exp.amount)||0) : 0;
+    totalPnl += pnl; totalBrok += brok; totalTrades += trades; totalExp += expAmt;
+    if(mode==='week' && fin){
+      const net = pnl - brok;
+      rows += `<div class="fin-day-row">
+        <div class="fd-label"><div class="name">${dayNames[(d.getDay()+6)%7]}</div><div class="num">${d.getDate()}/${d.getMonth()+1}</div></div>
+        <div class="fd-vals"><span class="${net>=0?'pos':'neg'}">${fmtMoney(net)}</span><span class="t">${trades} trades</span></div>
+      </div>`;
+    }
+  }
+  const netTotal = totalPnl - totalBrok;
+  const navFn = mode==='week' ? 'changeFinWeek' : 'changeFinMonth';
+
+  body.innerHTML = `
+    <div class="date-nav">
+      <button onclick="${navFn}(-1)">‹</button>
+      <span class="date-label">${rangeLabel}</span>
+      <button onclick="${navFn}(1)">›</button>
+    </div>
+    <div class="stats">
+      <div class="stat"><div class="num ${netTotal>=0?'pos':'neg'}">${fmtMoney(netTotal)}</div><div class="label">Net P&L</div></div>
+      <div class="stat"><div class="num">${totalTrades}</div><div class="label">Total trades</div></div>
+    </div>
+    <div class="stats">
+      <div class="stat"><div class="num">${fmtMoney(totalBrok)}</div><div class="label">Brokerage</div></div>
+      <div class="stat"><div class="num">${fmtMoney(totalExp)}</div><div class="label">Expenses</div></div>
+    </div>
+    ${mode==='week' ? `<div class="week-row">${rows || '<div class="note">No entries yet this week</div>'}</div>` : ''}
+    <div class="note">Gross P&L: ${fmtMoney(totalPnl)} · Net = P&L − Brokerage. Expenses are tracked separately and not subtracted from P&L.</div>
+  `;
+}
+
+function changeFinWeek(delta){
+  finWeekAnchor.setDate(finWeekAnchor.getDate()+delta*7);
+  renderFinRange('week');
+}
+function changeFinMonth(delta){
+  finMonthAnchor.setMonth(finMonthAnchor.getMonth()+delta);
+  renderFinRange('month');
+}
+
+/* ---------- Auth / Login ---------- */
+let authMode = 'signin'; // 'signin' | 'signup'
+
+function renderLogin(errMsg){
+  const app = document.getElementById('app');
+  app.innerHTML = `
+    <div class="login-wrap">
+      <div class="login-card">
+        <h2>Discipline Tracker</h2>
+        <div class="sub">${authMode==='signin' ? 'Sign in to sync across all your devices' : 'Create an account to get started'}</div>
+        <input type="email" id="auth-email" placeholder="Email" autocomplete="email">
+        <input type="password" id="auth-pass" placeholder="Password (min 6 characters)" autocomplete="${authMode==='signin'?'current-password':'new-password'}">
+        <button class="login-btn" onclick="doAuth()">${authMode==='signin' ? 'Sign In' : 'Create Account'}</button>
+        <div class="login-error">${errMsg || ''}</div>
+        <div class="login-toggle" onclick="toggleAuthMode()">${authMode==='signin' ? "New here? Create an account" : "Already have an account? Sign in"}</div>
+      </div>
+    </div>
+  `;
+}
+
+function toggleAuthMode(){
+  authMode = authMode==='signin' ? 'signup' : 'signin';
+  renderLogin();
+}
+
+async function doAuth(){
+  const email = document.getElementById('auth-email').value.trim();
+  const pass = document.getElementById('auth-pass').value;
+  if(!email || !pass){ renderLogin('Please enter email and password'); return; }
+  try{
+    if(authMode==='signin'){
+      await auth.signInWithEmailAndPassword(email, pass);
+    } else {
+      await auth.createUserWithEmailAndPassword(email, pass);
+    }
+    // onAuthStateChanged will take over and render the app
+  }catch(e){
+    renderLogin(e.message || 'Something went wrong');
+  }
+}
+
+function renderUserBar(){
+  const bar = document.createElement('div');
+  bar.className = 'login-userbar';
+  bar.innerHTML = `<span>${auth.currentUser ? auth.currentUser.email : ''}</span><span class="signout" onclick="doSignOut()">Sign out</span>`;
+  return bar;
+}
+
+async function doSignOut(){
+  await auth.signOut();
+}
+
+/* ---------- Init ---------- */
+auth.onAuthStateChanged(async (user)=>{
+  if(user){
+    await renderRoot();
+  } else {
+    renderLogin();
+  }
+});
+</script>
+</body>
+</html>
