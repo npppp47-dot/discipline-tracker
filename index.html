@@ -89,11 +89,12 @@
   .section-head .time{font-size:11px; color:var(--text-dim);}
   .items{padding:4px 8px;}
   .item{
-    display:flex; align-items:center; gap:12px;
-    padding:10px 8px; border-radius:8px; cursor:pointer;
+    padding:10px 8px; border-radius:8px;
     transition:background 0.15s;
   }
   .item:active{background:var(--panel-2);}
+  .item-row-inner{display:flex; align-items:center; gap:12px; width:100%;}
+  .item-main{flex:1; display:flex; align-items:center; gap:12px; cursor:pointer; min-width:0;}
   .box{
     width:20px; height:20px; border-radius:5px; border:1.5px solid var(--line);
     flex-shrink:0; display:flex; align-items:center; justify-content:center;
@@ -106,6 +107,33 @@
 
   .progress-bar{height:5px; background:var(--line); border-radius:3px; overflow:hidden; margin-top:4px;}
   .progress-fill{height:100%; background:var(--gold); transition:width 0.3s;}
+
+  /* Live clock */
+  .live-clock{
+    text-align:center; margin-bottom:16px; padding:8px 10px;
+    background:var(--panel); border:1px solid var(--line); border-radius:10px;
+    font-variant-numeric: tabular-nums;
+  }
+  .live-clock .time{color:var(--gold); font-weight:600; font-size:15px;}
+  .live-clock .running-task{
+    display:none; margin-top:4px; font-size:12px; color:var(--amber); font-weight:600;
+  }
+
+  /* Timers */
+  .timer-btn{
+    flex-shrink:0; width:30px; height:30px; border-radius:50%; border:1px solid var(--line);
+    background:var(--panel-2); color:var(--gold); font-size:12px; cursor:pointer;
+    display:flex; align-items:center; justify-content:center;
+  }
+  .timer-btn.running{background:var(--red); color:#fff; border-color:var(--red); animation:pulse 1.4s infinite;}
+  @keyframes pulse{0%{opacity:1;}50%{opacity:0.55;}100%{opacity:1;}}
+  .item-timer-info{font-size:11px; color:var(--text-dim); margin-top:3px; margin-left:32px; line-height:1.4;}
+  .section-timer-btn{
+    flex-shrink:0; padding:6px 12px; border-radius:14px; border:1px solid var(--line);
+    background:var(--panel-2); color:var(--gold); font-size:11px; cursor:pointer; white-space:nowrap;
+  }
+  .section-timer-btn.running{background:var(--red); color:#fff; border-color:var(--red);}
+  .section-timer-info{font-size:11px; color:var(--text-dim); padding:0 16px 10px; line-height:1.4;}
 
   .note{
     font-size:12px; color:var(--text-dim); text-align:center; margin-top:22px; line-height:1.6;
@@ -361,6 +389,149 @@ let finDate = new Date();
 let finWeekAnchor = new Date();
 let finMonthAnchor = new Date();
 
+/* ---------- Timer / live clock state ---------- */
+let timerLog = {items:{}, sections:{}};
+let activeTimer = null; // {scope:'item'|'section', key, sectionKey, start(ms), dateKey}
+try{
+  const savedActive = localStorage.getItem('activeTimer');
+  if(savedActive) activeTimer = JSON.parse(savedActive);
+}catch(e){}
+
+function isToday(d){ return sameDay(d, new Date()); }
+
+function formatDuration(totalSeconds){
+  totalSeconds = Math.max(0, Math.round(totalSeconds));
+  const h = Math.floor(totalSeconds/3600);
+  const m = Math.floor((totalSeconds%3600)/60);
+  const s = totalSeconds%60;
+  if(h>0) return `${h}h ${m}m`;
+  if(m>0) return `${m}m ${s}s`;
+  return `${s}s`;
+}
+function formatTime(ms){
+  return new Date(ms).toLocaleTimeString('en-IN',{hour:'numeric',minute:'2-digit'});
+}
+// Parses strings like "6:30 – 8:15 AM" or "11:00 AM – 1:00 PM" into planned minutes
+function parseTimeRange(str){
+  if(!str) return null;
+  const parts = str.split('–').map(s=>s.trim());
+  if(parts.length!==2) return null;
+  let [startStr, endStr] = parts;
+  const ampmRegex = /(AM|PM)$/i;
+  const endMatch = endStr.match(ampmRegex);
+  const startMatch = startStr.match(ampmRegex);
+  const endAmpm = endMatch ? endMatch[1].toUpperCase() : null;
+  const startAmpm = startMatch ? startMatch[1].toUpperCase() : endAmpm;
+  startStr = startStr.replace(ampmRegex,'').trim();
+  endStr = endStr.replace(ampmRegex,'').trim();
+  function toMinutes(t, ampm){
+    let [h,m] = t.split(':').map(Number);
+    if(isNaN(h)||isNaN(m)) return null;
+    if(ampm==='PM' && h!==12) h+=12;
+    if(ampm==='AM' && h===12) h=0;
+    return h*60+m;
+  }
+  const startMin = toMinutes(startStr, startAmpm);
+  const endMin = toMinutes(endStr, endAmpm);
+  if(startMin===null || endMin===null) return null;
+  let diff = endMin - startMin;
+  if(diff<0) diff += 24*60;
+  return diff;
+}
+function findItemLabel(itemKey){
+  const idx2 = itemKey.lastIndexOf(':');
+  const secKey = itemKey.slice(0, idx2);
+  const idx = Number(itemKey.slice(idx2+1));
+  const sec = getSections(new Date()).find(s=>s.key===secKey);
+  return sec ? sec.items[idx] : itemKey;
+}
+function findSectionLabel(sectionKey){
+  const sec = getSections(new Date()).find(s=>s.key===sectionKey);
+  return sec ? sec.title : sectionKey;
+}
+
+function toggleItemTimer(itemKey, sectionKey){
+  if(activeTimer && activeTimer.scope==='item' && activeTimer.key===itemKey){
+    stopActiveTimer();
+  } else {
+    startTimer('item', itemKey, sectionKey);
+  }
+}
+function toggleSectionTimer(sectionKey){
+  if(activeTimer && activeTimer.scope==='section' && activeTimer.key===sectionKey){
+    stopActiveTimer();
+  } else {
+    startTimer('section', sectionKey, null);
+  }
+}
+
+function startTimer(scope, key, sectionKey){
+  if(activeTimer){
+    stopActiveTimer(true);
+  }
+  activeTimer = { scope, key, sectionKey, start: Date.now(), dateKey: dateKey(currentDate) };
+  try{ localStorage.setItem('activeTimer', JSON.stringify(activeTimer)); }catch(e){}
+  if(view==='day') paintDayView();
+  tickClock();
+}
+
+async function stopActiveTimer(skipRepaint){
+  if(!activeTimer) return;
+  const finished = activeTimer;
+  const end = Date.now();
+  const elapsedSec = Math.round((end - finished.start)/1000);
+
+  if(finished.scope==='item'){
+    if(!timerLog.items) timerLog.items = {};
+    if(!timerLog.items[finished.key]) timerLog.items[finished.key] = {totalSeconds:0, sessions:[]};
+    timerLog.items[finished.key].sessions.push({start:finished.start, end});
+    timerLog.items[finished.key].totalSeconds += elapsedSec;
+    timerLog.items[finished.key].lastStatus = dayState[finished.key] ? 'completed' : 'partial';
+  } else {
+    if(!timerLog.sections) timerLog.sections = {};
+    if(!timerLog.sections[finished.key]) timerLog.sections[finished.key] = {totalSeconds:0, sessions:[]};
+    timerLog.sections[finished.key].sessions.push({start:finished.start, end});
+    timerLog.sections[finished.key].totalSeconds += elapsedSec;
+  }
+
+  activeTimer = null;
+  try{ localStorage.removeItem('activeTimer'); }catch(e){}
+  await saveTimerState(currentDate, timerLog);
+  if(!skipRepaint && view==='day') paintDayView();
+  tickClock();
+}
+
+function tickClock(){
+  const clockEl = document.getElementById('live-clock-time');
+  if(clockEl){
+    clockEl.textContent = new Date().toLocaleString('en-IN', {weekday:'short', day:'numeric', month:'short', hour:'numeric', minute:'2-digit', second:'2-digit'});
+  }
+  const runEl = document.getElementById('live-clock-running');
+  if(runEl){
+    if(activeTimer){
+      const secs = Math.floor((Date.now()-activeTimer.start)/1000);
+      const label = activeTimer.scope==='item' ? findItemLabel(activeTimer.key) : findSectionLabel(activeTimer.key);
+      runEl.textContent = `⏱ Running: ${label} — ${formatDuration(secs)}`;
+      runEl.style.display = 'block';
+    } else {
+      runEl.textContent = '';
+      runEl.style.display = 'none';
+    }
+  }
+  if(activeTimer){
+    const secs = Math.floor((Date.now()-activeTimer.start)/1000);
+    const mmss = formatDuration(secs);
+    if(activeTimer.scope==='item'){
+      const el = document.getElementById(`running-item-${activeTimer.key}`);
+      if(el) el.textContent = mmss;
+    } else {
+      const el = document.getElementById(`running-section-${activeTimer.key}`);
+      if(el) el.textContent = mmss;
+    }
+  }
+}
+setInterval(tickClock, 1000);
+
 /* ---------- Storage helpers (Firestore, per-user) ---------- */
 function userDocRef(collection, key){
   const uid = auth.currentUser && auth.currentUser.uid;
@@ -400,6 +571,16 @@ async function saveExpState(date, state){
   try{ await userDocRef('expenses', dateKey(date)).set(state); }
   catch(e){ console.error('save failed', e); }
 }
+async function fetchTimerState(date){
+  try{
+    const snap = await userDocRef('timerLogs', dateKey(date)).get();
+    return snap.exists ? snap.data() : null;
+  }catch(e){ console.error('fetch failed', e); return null; }
+}
+async function saveTimerState(date, state){
+  try{ await userDocRef('timerLogs', dateKey(date)).set(state); }
+  catch(e){ console.error('save failed', e); }
+}
 function fmtMoney(n){
   const v = Number(n)||0;
   const sign = v<0 ? '-' : '';
@@ -413,6 +594,10 @@ async function renderRoot(){
   app.innerHTML = `
     <div class="login-userbar"><span>${userEmail}</span><span class="signout" onclick="doSignOut()">Sign out</span></div>
     <h1>Discipline Tracker</h1>
+    <div class="live-clock">
+      <span class="time" id="live-clock-time">--:--:--</span>
+      <span class="running-task" id="live-clock-running"></span>
+    </div>
     <div class="tabs">
       <div class="tab ${view==='day'?'active':''}" onclick="switchView('day')">Today</div>
       <div class="tab ${view==='week'?'active':''}" onclick="switchView('week')">Week</div>
@@ -425,6 +610,7 @@ async function renderRoot(){
   else if(view==='week') await renderWeekView();
   else if(view==='month') await renderMonthView();
   else await renderFinanceRoot();
+  tickClock();
 }
 
 function switchView(v){
@@ -435,6 +621,9 @@ function switchView(v){
 /* ---------- DAY VIEW ---------- */
 async function renderDayView(){
   dayState = await fetchDayState(currentDate) || {};
+  timerLog = await fetchTimerState(currentDate) || {items:{}, sections:{}};
+  if(!timerLog.items) timerLog.items = {};
+  if(!timerLog.sections) timerLog.sections = {};
   paintDayView();
 }
 
@@ -444,6 +633,7 @@ function paintDayView(){
   const total = totalItemsForDate(currentDate);
   const done = Object.values(dayState).filter(Boolean).length;
   const weekend = isWeekend(currentDate);
+  const isTodayView = isToday(currentDate);
 
   let html = `
     <div class="date-nav">
@@ -464,18 +654,54 @@ function paintDayView(){
   sections.forEach(section=>{
     const secTotal = section.items.length;
     const secDone = section.items.filter((_,i)=>dayState[section.key+':'+i]).length;
+    const plannedMin = parseTimeRange(section.time);
+    const secData = timerLog.sections && timerLog.sections[section.key];
+    const secSeconds = secData ? secData.totalSeconds : 0;
+    const isRunningSection = !!(activeTimer && activeTimer.scope==='section' && activeTimer.key===section.key && activeTimer.dateKey===dateKey(currentDate));
+
+    let secInfoLine = '';
+    if(isRunningSection || secSeconds>0){
+      const parts = [];
+      if(isRunningSection) parts.push(`⏱ Running: <span id="running-section-${section.key}">00:00</span>`);
+      if(secSeconds>0) parts.push(`Actual so far: ${formatDuration(secSeconds)}${plannedMin?` (Planned ${formatDuration(plannedMin*60)})`:''}`);
+      secInfoLine = `<div class="section-timer-info">${parts.join(' · ')}</div>`;
+    }
+
     html += `<div class="section">
       <div class="section-head">
-        <span class="title">${section.title}</span>
-        <span class="time">${section.time}</span>
+        <div>
+          <div class="title">${section.title}</div>
+          <div class="time">${section.time}${plannedMin?` · Planned ${formatDuration(plannedMin*60)}`:''}</div>
+        </div>
+        ${isTodayView ? `<button class="section-timer-btn ${isRunningSection?'running':''}" onclick="toggleSectionTimer('${section.key}')">${isRunningSection?'⏹ Stop':'▶ Start'}</button>` : ''}
       </div>
+      ${secInfoLine}
       <div class="items">`;
     section.items.forEach((text,i)=>{
       const itemKey = section.key+':'+i;
       const checked = !!dayState[itemKey];
-      html += `<div class="item ${checked?'done':''}" data-item="${itemKey}" onclick="toggleItem('${itemKey}')">
-        <div class="box ${checked?'checked':''}"></div>
-        <div class="item-text">${text}</div>
+      const itData = timerLog.items && timerLog.items[itemKey];
+      const itSeconds = itData ? itData.totalSeconds : 0;
+      const isRunningItem = !!(activeTimer && activeTimer.scope==='item' && activeTimer.key===itemKey && activeTimer.dateKey===dateKey(currentDate));
+
+      let itemInfoLine = '';
+      if(isRunningItem){
+        itemInfoLine = `<div class="item-timer-info">⏱ Running: <span id="running-item-${itemKey}">00:00</span></div>`;
+      } else if(itSeconds>0 && itData.sessions && itData.sessions.length){
+        const lastSess = itData.sessions[itData.sessions.length-1];
+        const statusTxt = itData.lastStatus==='completed' ? 'Poora kiya' : 'Beech me chhoda';
+        itemInfoLine = `<div class="item-timer-info">⏱ Total: ${formatDuration(itSeconds)} · ${statusTxt} · Last: ${formatTime(lastSess.start)}–${formatTime(lastSess.end)}</div>`;
+      }
+
+      html += `<div class="item ${checked?'done':''}" data-item="${itemKey}">
+        <div class="item-row-inner">
+          <div class="item-main" onclick="toggleItem('${itemKey}')">
+            <div class="box ${checked?'checked':''}"></div>
+            <div class="item-text">${text}</div>
+          </div>
+          ${isTodayView ? `<button class="timer-btn ${isRunningItem?'running':''}" onclick="event.stopPropagation(); toggleItemTimer('${itemKey}','${section.key}')">${isRunningItem?'⏹':'▶'}</button>` : ''}
+        </div>
+        ${itemInfoLine}
       </div>`;
     });
     html += `</div>
