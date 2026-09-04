@@ -135,6 +135,57 @@
   .section-timer-btn.running{background:var(--red); color:#fff; border-color:var(--red);}
   .section-timer-info{font-size:11px; color:var(--text-dim); padding:0 16px 10px; line-height:1.4;}
 
+  .configure-timers-link{
+    display:block; text-align:center; font-size:12px; color:var(--gold);
+    text-decoration:underline; cursor:pointer; margin-bottom:14px;
+  }
+  .timer-config-toggle{
+    flex-shrink:0; padding:5px 10px; border-radius:14px; border:1px solid var(--line);
+    font-size:11px; cursor:pointer; white-space:nowrap;
+  }
+  .timer-config-toggle.on{background:var(--green); color:#0e1210; border-color:var(--green); font-weight:600;}
+  .timer-config-toggle.off{background:var(--panel-2); color:var(--text-dim);}
+
+  .task-totals{margin-top:6px; margin-bottom:18px;}
+  .task-totals-title{font-size:13px; font-weight:600; color:var(--text); margin-bottom:10px;}
+  .task-total-row{
+    display:flex; align-items:center; gap:10px; background:var(--panel);
+    border:1px solid var(--line); border-radius:10px; padding:9px 12px; margin-bottom:7px;
+  }
+  .task-total-row .tt-name{flex:1; font-size:12.5px; line-height:1.3;}
+  .task-total-row .tt-bar{width:70px; height:6px; background:var(--line); border-radius:3px; overflow:hidden; flex-shrink:0;}
+  .task-total-row .tt-fill{height:100%; background:var(--gold); border-radius:3px;}
+  .task-total-row .tt-val{font-size:12px; color:var(--gold); font-weight:600; flex-shrink:0; min-width:56px; text-align:right;}
+
+  .add-item-row{display:flex; gap:8px; padding:8px 8px 10px;}
+  .add-item-row input{
+    flex:1; background:var(--bg); border:1px solid var(--line); border-radius:8px;
+    color:var(--text); font-size:13px; padding:8px 10px; font-family:var(--font-body); min-width:0;
+  }
+  .add-item-row input:focus{outline:none; border-color:var(--gold);}
+  .add-item-row button{
+    background:var(--gold); color:#0e1210; border:none; border-radius:8px;
+    padding:0 14px; font-size:13px; font-weight:600; cursor:pointer; flex-shrink:0;
+  }
+  .remove-x{color:var(--red); font-size:14px; cursor:pointer; flex-shrink:0; padding:0 4px;}
+  .section-remove-btn{
+    color:var(--red); font-size:10.5px; cursor:pointer; margin-left:8px; text-decoration:underline; font-weight:400;
+  }
+  .add-section-card{
+    background:var(--panel); border:1px dashed var(--line); border-radius:12px;
+    padding:14px 16px; margin-bottom:16px;
+  }
+  .add-section-card .lbl{font-size:12px; color:var(--text-dim); margin-bottom:8px; font-weight:600;}
+  .add-section-card input{
+    width:100%; background:var(--bg); border:1px solid var(--line); border-radius:8px;
+    color:var(--text); font-size:13.5px; padding:9px 10px; font-family:var(--font-body); margin-bottom:8px;
+  }
+  .add-section-card input:focus{outline:none; border-color:var(--gold);}
+  .add-section-card button{
+    width:100%; background:var(--gold); color:#0e1210; border:none; border-radius:8px;
+    padding:9px 0; font-size:13.5px; font-weight:600; cursor:pointer;
+  }
+
   .note{
     font-size:12px; color:var(--text-dim); text-align:center; margin-top:22px; line-height:1.6;
     font-style:italic;
@@ -338,15 +389,32 @@ function isWeekend(date){
 
 function getSections(date){
   const w = isWeekend(date);
-  return [
-    { key:"morning", title:"Morning", time:"4:00 – 6:00 AM", items: MORNING },
-    { key:"s1", title: w ? "Session 1 — Backtest & Analysis" : "Session 1 — Trading + Analysis", time:"6:30 – 8:15 AM", items: w ? S1_WEEKEND : S1_WEEKDAY },
-    { key:"s2", title: w ? "Session 2 — Backtest & Review" : "Session 2 — Trading + Analysis", time:"8:45 – 11:00 AM", items: w ? S2_WEEKEND : S2_WEEKDAY },
-    { key:"break", title:"Break", time:"11:00 AM – 1:00 PM", items: BREAK },
-    { key:"s3", title: w ? "Session 3 — English, Journal, Reading" : "Session 3 — Trading, English, Journal", time:"1:00 – 4:45 PM", items: w ? S3_WEEKEND : S3_WEEKDAY },
-    { key:"lite", title: w ? "Weekly Wrap-up" : "Lite Trading Session", time:"5:45 – 8:45 PM", items: w ? LITE_WEEKEND : LITE_WEEKDAY },
-    { key:"night", title:"Exercise + Lecture", time:"8:45 – 10:00 PM", items: EXERCISE_LECTURE }
+  const base = [
+    { key:"morning", title:"Morning", time:"4:00 – 6:00 AM", items: MORNING.slice() },
+    { key:"s1", title: w ? "Session 1 — Backtest & Analysis" : "Session 1 — Trading + Analysis", time:"6:30 – 8:15 AM", items: (w ? S1_WEEKEND : S1_WEEKDAY).slice() },
+    { key:"s2", title: w ? "Session 2 — Backtest & Review" : "Session 2 — Trading + Analysis", time:"8:45 – 11:00 AM", items: (w ? S2_WEEKEND : S2_WEEKDAY).slice() },
+    { key:"break", title:"Break", time:"11:00 AM – 1:00 PM", items: BREAK.slice() },
+    { key:"s3", title: w ? "Session 3 — English, Journal, Reading" : "Session 3 — Trading, English, Journal", time:"1:00 – 4:45 PM", items: (w ? S3_WEEKEND : S3_WEEKDAY).slice() },
+    { key:"lite", title: w ? "Weekly Wrap-up" : "Lite Trading Session", time:"5:45 – 8:45 PM", items: (w ? LITE_WEEKEND : LITE_WEEKDAY).slice() },
+    { key:"night", title:"Exercise + Lecture", time:"8:45 – 10:00 PM", items: EXERCISE_LECTURE.slice() }
   ];
+  base.forEach(sec=>{
+    sec.codedCount = sec.items.length;
+    const extras = (customContent.sectionExtras && customContent.sectionExtras[sec.key]) || [];
+    sec.customItemsMeta = extras;
+    extras.forEach(e=>sec.items.push(e.text));
+    sec.isCustomSection = false;
+  });
+  const extraSecs = (customContent.extraSections||[]).map(es=>({
+    key: es.key,
+    title: es.title,
+    time: es.time || '',
+    items: (es.items||[]).map(it=>it.text),
+    codedCount: 0,
+    customItemsMeta: es.items||[],
+    isCustomSection: true
+  }));
+  return [...base, ...extraSecs];
 }
 
 function totalItemsForDate(date){
@@ -399,6 +467,171 @@ try{
 
 function isToday(d){ return sameDay(d, new Date()); }
 
+/* ---------- Timer configuration (which items/sections have a timer) ---------- */
+let timerConfig = {items:{}, sections:{}};
+let configMode = false;
+
+function itemTimerEnabled(itemKey){
+  return !(timerConfig.items && timerConfig.items[itemKey]===false);
+}
+function sectionTimerEnabled(sectionKey){
+  return !(timerConfig.sections && timerConfig.sections[sectionKey]===false);
+}
+async function loadTimerConfig(){
+  try{
+    const snap = await userDocRef('settings','timerConfig').get();
+    const data = snap.exists ? snap.data() : {};
+    timerConfig = { items: data.items || {}, sections: data.sections || {} };
+  }catch(e){
+    console.error('loadTimerConfig failed', e);
+    timerConfig = {items:{}, sections:{}};
+  }
+}
+async function saveTimerConfig(){
+  try{ await userDocRef('settings','timerConfig').set(timerConfig); }
+  catch(e){ console.error('saveTimerConfig failed', e); }
+}
+async function toggleItemTimerConfig(itemKey){
+  const nowEnabled = !itemTimerEnabled(itemKey);
+  if(!timerConfig.items) timerConfig.items = {};
+  timerConfig.items[itemKey] = nowEnabled;
+  await saveTimerConfig();
+  paintDayView();
+}
+async function toggleSectionTimerConfig(sectionKey){
+  const nowEnabled = !sectionTimerEnabled(sectionKey);
+  if(!timerConfig.sections) timerConfig.sections = {};
+  timerConfig.sections[sectionKey] = nowEnabled;
+  await saveTimerConfig();
+  paintDayView();
+}
+function toggleConfigMode(){
+  configMode = !configMode;
+  paintDayView();
+}
+
+/* ---------- Custom (user-added) tasks & sections ---------- */
+let customContent = {sectionExtras:{}, extraSections:[]};
+
+function genId(){ return 'c'+Date.now().toString(36)+Math.random().toString(36).slice(2,7); }
+
+async function loadCustomContent(){
+  try{
+    const snap = await userDocRef('settings','customContent').get();
+    const data = snap.exists ? snap.data() : {};
+    customContent = { sectionExtras: data.sectionExtras || {}, extraSections: data.extraSections || [] };
+  }catch(e){
+    console.error('loadCustomContent failed', e);
+    customContent = {sectionExtras:{}, extraSections:[]};
+  }
+}
+async function saveCustomContent(){
+  try{ await userDocRef('settings','customContent').set(customContent); }
+  catch(e){ console.error('saveCustomContent failed', e); }
+}
+
+function parseItemKey(itemKey){
+  const m = itemKey.match(/^(.+):custom:(.+)$/);
+  if(m) return { sectionKey: m[1], customId: m[2], isCustom:true };
+  const idx2 = itemKey.lastIndexOf(':');
+  return { sectionKey: itemKey.slice(0, idx2), idx: Number(itemKey.slice(idx2+1)), isCustom:false };
+}
+
+async function addItemToSection(sectionKey){
+  const input = document.getElementById(`new-item-input-${sectionKey}`);
+  if(!input) return;
+  const text = input.value.trim();
+  if(!text) return;
+  const newItem = { id: genId(), text };
+  const extraSec = (customContent.extraSections||[]).find(s=>s.key===sectionKey);
+  if(extraSec){
+    if(!extraSec.items) extraSec.items = [];
+    extraSec.items.push(newItem);
+  } else {
+    if(!customContent.sectionExtras) customContent.sectionExtras = {};
+    if(!customContent.sectionExtras[sectionKey]) customContent.sectionExtras[sectionKey] = [];
+    customContent.sectionExtras[sectionKey].push(newItem);
+  }
+  await saveCustomContent();
+  paintDayView();
+}
+
+async function removeCustomItem(sectionKey, id){
+  if(!confirm('Ye task hata dein?')) return;
+  const extraSec = (customContent.extraSections||[]).find(s=>s.key===sectionKey);
+  if(extraSec){
+    extraSec.items = (extraSec.items||[]).filter(x=>x.id!==id);
+  } else if(customContent.sectionExtras && customContent.sectionExtras[sectionKey]){
+    customContent.sectionExtras[sectionKey] = customContent.sectionExtras[sectionKey].filter(x=>x.id!==id);
+  }
+  await saveCustomContent();
+  paintDayView();
+}
+
+async function addNewSection(){
+  const titleInput = document.getElementById('new-section-title');
+  const timeInput = document.getElementById('new-section-time');
+  const title = titleInput.value.trim();
+  if(!title){ titleInput.focus(); return; }
+  const time = timeInput.value.trim();
+  if(!customContent.extraSections) customContent.extraSections = [];
+  customContent.extraSections.push({ key: 'custom_'+genId(), title, time, items: [] });
+  await saveCustomContent();
+  titleInput.value = '';
+  timeInput.value = '';
+  paintDayView();
+}
+
+async function removeSection(sectionKey){
+  if(!confirm('Ye poora section aur uske sab tasks hata dein?')) return;
+  customContent.extraSections = (customContent.extraSections||[]).filter(s=>s.key!==sectionKey);
+  await saveCustomContent();
+  paintDayView();
+}
+
+/* Aggregates time spent per task label (by name, not by key) across a range of dates */
+async function computeTaskTotals(days){
+  const today = new Date();
+  const totals = {}; // label -> seconds
+  for(const d of days){
+    if(d > today && !sameDay(d,today)) continue;
+    const tl = await fetchTimerState(d);
+    if(!tl || !tl.items) continue;
+    const sections = getSections(d);
+    for(const [itemKey, data] of Object.entries(tl.items)){
+      const parsed = parseItemKey(itemKey);
+      const sec = sections.find(s=>s.key===parsed.sectionKey);
+      let label = itemKey;
+      if(sec){
+        if(parsed.isCustom){
+          const meta = (sec.customItemsMeta||[]).find(m=>m.id===parsed.customId);
+          label = meta ? meta.text : itemKey;
+        } else {
+          label = sec.items[parsed.idx] || itemKey;
+        }
+      }
+      totals[label] = (totals[label]||0) + (data.totalSeconds||0);
+    }
+  }
+  return totals;
+}
+
+function renderTaskTotalsHTML(totals){
+  const entries = Object.entries(totals).filter(([,s])=>s>0).sort((a,b)=>b[1]-a[1]);
+  if(!entries.length) return '';
+  const maxSec = entries[0][1];
+  let rows = '';
+  entries.forEach(([label,sec])=>{
+    const pct = maxSec ? Math.round(sec/maxSec*100) : 0;
+    rows += `<div class="task-total-row">
+      <div class="tt-name">${label}</div>
+      <div class="tt-bar"><div class="tt-fill" style="width:${pct}%"></div></div>
+      <div class="tt-val">${formatDuration(sec)}</div>
+    </div>`;
+  });
+  return `<div class="task-totals"><div class="task-totals-title">Task-wise time spent</div>${rows}</div>`;
+}
+
 function formatDuration(totalSeconds){
   totalSeconds = Math.max(0, Math.round(totalSeconds));
   const h = Math.floor(totalSeconds/3600);
@@ -439,11 +672,14 @@ function parseTimeRange(str){
   return diff;
 }
 function findItemLabel(itemKey){
-  const idx2 = itemKey.lastIndexOf(':');
-  const secKey = itemKey.slice(0, idx2);
-  const idx = Number(itemKey.slice(idx2+1));
-  const sec = getSections(new Date()).find(s=>s.key===secKey);
-  return sec ? sec.items[idx] : itemKey;
+  const parsed = parseItemKey(itemKey);
+  const sec = getSections(new Date()).find(s=>s.key===parsed.sectionKey);
+  if(!sec) return itemKey;
+  if(parsed.isCustom){
+    const meta = (sec.customItemsMeta||[]).find(m=>m.id===parsed.customId);
+    return meta ? meta.text : itemKey;
+  }
+  return sec.items[parsed.idx] || itemKey;
 }
 function findSectionLabel(sectionKey){
   const sec = getSections(new Date()).find(s=>s.key===sectionKey);
@@ -451,6 +687,7 @@ function findSectionLabel(sectionKey){
 }
 
 function toggleItemTimer(itemKey, sectionKey){
+  if(!itemTimerEnabled(itemKey)) return;
   if(activeTimer && activeTimer.scope==='item' && activeTimer.key===itemKey){
     stopActiveTimer();
   } else {
@@ -458,6 +695,7 @@ function toggleItemTimer(itemKey, sectionKey){
   }
 }
 function toggleSectionTimer(sectionKey){
+  if(!sectionTimerEnabled(sectionKey)) return;
   if(activeTimer && activeTimer.scope==='section' && activeTimer.key===sectionKey){
     stopActiveTimer();
   } else {
@@ -645,6 +883,7 @@ function paintDayView(){
       <span class="daytype-badge">${weekend ? 'Weekend mode — backtest & review' : 'Weekday mode — live trading'}</span>
     </div>
     <div class="general-rule"><span class="icon">⏱</span><span>Be present 5–10 min before every session starts — every day, including Sat/Sun.</span></div>
+    <div class="configure-timers-link" onclick="toggleConfigMode()">${configMode ? '✓ Done customizing timers' : '⚙ Choose which tasks have a timer'}</div>
     <div class="stats">
       <div class="stat"><div class="num" id="streak-num">–</div><div class="label">Day streak</div></div>
       <div class="stat"><div class="num">${total?Math.round(done/total*100):0}%</div><div class="label">Today's completion</div></div>
@@ -653,10 +892,14 @@ function paintDayView(){
 
   sections.forEach(section=>{
     const secTotal = section.items.length;
-    const secDone = section.items.filter((_,i)=>dayState[section.key+':'+i]).length;
+    const secDone = section.items.filter((_,i)=>{
+      const key = i>=section.codedCount ? `${section.key}:custom:${section.customItemsMeta[i-section.codedCount].id}` : section.key+':'+i;
+      return !!dayState[key];
+    }).length;
     const plannedMin = parseTimeRange(section.time);
     const secData = timerLog.sections && timerLog.sections[section.key];
     const secSeconds = secData ? secData.totalSeconds : 0;
+    const secTimerOn = sectionTimerEnabled(section.key);
     const isRunningSection = !!(activeTimer && activeTimer.scope==='section' && activeTimer.key===section.key && activeTimer.dateKey===dateKey(currentDate));
 
     let secInfoLine = '';
@@ -667,21 +910,34 @@ function paintDayView(){
       secInfoLine = `<div class="section-timer-info">${parts.join(' · ')}</div>`;
     }
 
+    let sectionTimerControl = '';
+    if(configMode){
+      sectionTimerControl = `<button class="timer-config-toggle ${secTimerOn?'on':'off'}" onclick="toggleSectionTimerConfig('${section.key}')">${secTimerOn?'Timer: ON':'Timer: OFF'}</button>`;
+    } else if(isTodayView && secTimerOn){
+      sectionTimerControl = `<button class="section-timer-btn ${isRunningSection?'running':''}" onclick="toggleSectionTimer('${section.key}')">${isRunningSection?'⏹ Stop':'▶ Start'}</button>`;
+    }
+
+    let sectionTitleHtml = `<div class="title">${section.title}${(configMode && section.isCustomSection) ? `<span class="section-remove-btn" onclick="removeSection('${section.key}')">remove section</span>` : ''}</div>`;
+
     html += `<div class="section">
       <div class="section-head">
         <div>
-          <div class="title">${section.title}</div>
+          ${sectionTitleHtml}
           <div class="time">${section.time}${plannedMin?` · Planned ${formatDuration(plannedMin*60)}`:''}</div>
         </div>
-        ${isTodayView ? `<button class="section-timer-btn ${isRunningSection?'running':''}" onclick="toggleSectionTimer('${section.key}')">${isRunningSection?'⏹ Stop':'▶ Start'}</button>` : ''}
+        ${sectionTimerControl}
       </div>
       ${secInfoLine}
       <div class="items">`;
     section.items.forEach((text,i)=>{
-      const itemKey = section.key+':'+i;
+      const isCustomItem = i >= section.codedCount;
+      const itemKey = isCustomItem
+        ? `${section.key}:custom:${section.customItemsMeta[i-section.codedCount].id}`
+        : `${section.key}:${i}`;
       const checked = !!dayState[itemKey];
       const itData = timerLog.items && timerLog.items[itemKey];
       const itSeconds = itData ? itData.totalSeconds : 0;
+      const itTimerOn = itemTimerEnabled(itemKey);
       const isRunningItem = !!(activeTimer && activeTimer.scope==='item' && activeTimer.key===itemKey && activeTimer.dateKey===dateKey(currentDate));
 
       let itemInfoLine = '';
@@ -693,25 +949,47 @@ function paintDayView(){
         itemInfoLine = `<div class="item-timer-info">⏱ Total: ${formatDuration(itSeconds)} · ${statusTxt} · Last: ${formatTime(lastSess.start)}–${formatTime(lastSess.end)}</div>`;
       }
 
+      let itemTimerControl = '';
+      if(configMode){
+        itemTimerControl = `<button class="timer-config-toggle ${itTimerOn?'on':'off'}" onclick="event.stopPropagation(); toggleItemTimerConfig('${itemKey}')">${itTimerOn?'ON':'OFF'}</button>`;
+      } else if(isTodayView && itTimerOn){
+        itemTimerControl = `<button class="timer-btn ${isRunningItem?'running':''}" onclick="event.stopPropagation(); toggleItemTimer('${itemKey}','${section.key}')">${isRunningItem?'⏹':'▶'}</button>`;
+      }
+
+      const removeBtn = (configMode && isCustomItem)
+        ? `<span class="remove-x" onclick="event.stopPropagation(); removeCustomItem('${section.key}','${section.customItemsMeta[i-section.codedCount].id}')">✕</span>`
+        : '';
+
       html += `<div class="item ${checked?'done':''}" data-item="${itemKey}">
         <div class="item-row-inner">
           <div class="item-main" onclick="toggleItem('${itemKey}')">
             <div class="box ${checked?'checked':''}"></div>
             <div class="item-text">${text}</div>
           </div>
-          ${isTodayView ? `<button class="timer-btn ${isRunningItem?'running':''}" onclick="event.stopPropagation(); toggleItemTimer('${itemKey}','${section.key}')">${isRunningItem?'⏹':'▶'}</button>` : ''}
+          ${itemTimerControl}
+          ${removeBtn}
         </div>
         ${itemInfoLine}
       </div>`;
     });
+    html += `<div class="add-item-row">
+        <input type="text" id="new-item-input-${section.key}" placeholder="New task in ${section.title}..." onkeydown="if(event.key==='Enter'){addItemToSection('${section.key}');}">
+        <button onclick="addItemToSection('${section.key}')">+ Add</button>
+      </div>`;
     html += `</div>
       <div style="padding:0 16px 12px;">
-        <div class="progress-bar"><div class="progress-fill" style="width:${(secDone/secTotal*100)}%"></div></div>
+        <div class="progress-bar"><div class="progress-fill" style="width:${secTotal?(secDone/secTotal*100):0}%"></div></div>
       </div>
     </div>`;
   });
 
   html += `
+    <div class="add-section-card">
+      <div class="lbl">+ Add a new daily section (jaise Medicine, Reading, etc.)</div>
+      <input type="text" id="new-section-title" placeholder="Section name (e.g. Medicine)">
+      <input type="text" id="new-section-time" placeholder="Time range - optional (e.g. 9:00 – 9:15 PM)">
+      <button onclick="addNewSection()">+ Create Section</button>
+    </div>
     <div class="note">"100–200 blown accounts didn't mean failure — it meant there was no system.<br>From today, there's a system."</div>
     <div class="reset-link" onclick="resetDay()">Reset this day's data</div>
   `;
@@ -794,6 +1072,7 @@ async function renderWeekView(){
 
   const weekAvg = weekTotalItems ? Math.round(weekTotalDone/weekTotalItems*100) : 0;
   const rangeLabel = `${monday.toLocaleDateString('en-IN',{day:'numeric',month:'short'})} – ${days[6].toLocaleDateString('en-IN',{day:'numeric',month:'short'})}`;
+  const weekTaskTotals = await computeTaskTotals(days);
 
   body.innerHTML = `
     <div class="date-nav">
@@ -806,6 +1085,7 @@ async function renderWeekView(){
       <div class="stat"><div class="num">${daysWithData}/7</div><div class="label">Days tracked</div></div>
     </div>
     <div class="week-row">${rows}</div>
+    ${renderTaskTotalsHTML(weekTaskTotals)}
     <div class="note">Weekdays = live trading rules · Sat/Sun = backtesting, reading & weekly trade review</div>
   `;
 }
@@ -836,9 +1116,11 @@ async function renderMonthView(){
   }
 
   let monthTotalDone=0, monthTotalItems=0, perfectDays=0, trackedDays=0;
+  const monthDays = [];
 
   for(let day=1; day<=daysInMonth; day++){
     const d = new Date(year, month, day);
+    monthDays.push(d);
     const isFuture = d > today && !sameDay(d,today);
     let pct = 0, bg = 'var(--panel-2)';
     if(!isFuture){
@@ -859,6 +1141,7 @@ async function renderMonthView(){
 
   const monthAvg = monthTotalItems ? Math.round(monthTotalDone/monthTotalItems*100) : 0;
   const monthLabel = firstDay.toLocaleDateString('en-IN',{month:'long', year:'numeric'});
+  const monthTaskTotals = await computeTaskTotals(monthDays);
 
   body.innerHTML = `
     <div class="date-nav">
@@ -877,6 +1160,7 @@ async function renderMonthView(){
       <span class="sw" style="background:var(--gold); margin-left:8px;"></span> 50–99%
       <span class="sw" style="background:var(--green); margin-left:8px;"></span> 100%
     </div>
+    ${renderTaskTotalsHTML(monthTaskTotals)}
   `;
 }
 
@@ -1088,6 +1372,8 @@ if('serviceWorker' in navigator){
 
 auth.onAuthStateChanged(async (user)=>{
   if(user){
+    await loadTimerConfig();
+    await loadCustomContent();
     await renderRoot();
   } else {
     renderLogin();
