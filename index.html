@@ -834,6 +834,22 @@ function expTotal(exp){
   if(Array.isArray(exp.items)) return exp.items.reduce((s,it)=>s+(Number(it.amount)||0),0);
   return Number(exp.amount)||0; // legacy single-amount format
 }
+const EXP_CATEGORIES = ['Food','Clothing','Transport','Bills','Entertainment','Shopping','Health','Other'];
+function renderExpenseCategoryHTML(totals){
+  const entries = Object.entries(totals).filter(([,v])=>v>0).sort((a,b)=>b[1]-a[1]);
+  if(!entries.length) return '';
+  const maxVal = entries[0][1];
+  let rows = '';
+  entries.forEach(([label,val])=>{
+    const pct = maxVal ? Math.round(val/maxVal*100) : 0;
+    rows += `<div class="task-total-row">
+      <div class="tt-name">${label}</div>
+      <div class="tt-bar"><div class="tt-fill" style="width:${pct}%"></div></div>
+      <div class="tt-val">${fmtRupee(val)}</div>
+    </div>`;
+  });
+  return `<div class="task-totals"><div class="task-totals-title">Expense breakdown by category</div>${rows}</div>`;
+}
 
 /* ---------- Rendering: root ---------- */
 async function renderRoot(){
@@ -1229,16 +1245,19 @@ async function renderFinDay(){
           <div class="item">
             <div class="item-row-inner">
               <div class="item-main" style="cursor:default;">
-                <span class="item-text">${it.name}</span>
+                <span class="item-text">${it.name} <span style="color:var(--text-dim); font-size:11.5px;">· ${it.category||'Other'}</span></span>
               </div>
               <span class="tt-val" style="color:var(--gold); font-weight:600;">${fmtRupee(it.amount)}</span>
               <span class="remove-x" onclick="removeExpItem('${it.id}')">✕</span>
             </div>
           </div>
-        `).join('') || '<div class="section-timer-info">Koi kharcha add nahi hua abhi</div>'}
+        `).join('') || '<div class="section-timer-info">No expenses added yet</div>'}
       </div>
-      <div class="add-item-row">
-        <input type="text" id="exp-name" placeholder="Kis cheez pe kharch hua (e.g. Chai, Petrol)">
+      <div class="add-item-row" style="flex-wrap:wrap;">
+        <input type="text" id="exp-name" placeholder="What did you spend on (e.g. Lunch)" style="flex:1 1 100%;">
+        <select id="exp-cat" style="flex:1; background:var(--bg); border:1px solid var(--line); border-radius:8px; color:var(--text); font-size:13px; padding:8px 10px; font-family:var(--font-body);">
+          ${EXP_CATEGORIES.map(c=>`<option value="${c}">${c}</option>`).join('')}
+        </select>
         <input type="number" id="exp-amt" placeholder="₹ Amount" style="flex:0 0 90px;">
         <button onclick="addExpItem()">+ Add</button>
       </div>
@@ -1257,13 +1276,15 @@ async function saveFinDay(){
 
 async function addExpItem(){
   const nameInput = document.getElementById('exp-name');
+  const catInput = document.getElementById('exp-cat');
   const amtInput = document.getElementById('exp-amt');
   const name = nameInput.value.trim();
+  const category = catInput.value || 'Other';
   const amount = amtInput.value;
   if(!name || !amount){ return; }
   const current = await fetchExpState(finDate) || {items:[]};
   if(!Array.isArray(current.items)) current.items = [];
-  current.items.push({id: genId(), name, amount: Number(amount)});
+  current.items.push({id: genId(), name, category, amount: Number(amount)});
   await saveExpState(finDate, current);
   renderFinDay();
 }
@@ -1300,6 +1321,7 @@ async function renderFinRange(mode){
   const today = new Date();
   const dayNames = ["Mon","Tue","Wed","Thu","Fri","Sat","Sun"];
   let totalPnl=0, totalBrok=0, totalTrades=0, totalExp=0, rows='';
+  const categoryTotals = {};
 
   for(const d of days){
     if(d > today && !sameDay(d,today)) continue;
@@ -1310,6 +1332,12 @@ async function renderFinRange(mode){
     const trades = fin ? (Number(fin.trades)||0) : 0;
     const expAmt = expTotal(exp);
     totalPnl += pnl; totalBrok += brok; totalTrades += trades; totalExp += expAmt;
+    if(exp && Array.isArray(exp.items)){
+      exp.items.forEach(it=>{
+        const cat = it.category || 'Other';
+        categoryTotals[cat] = (categoryTotals[cat]||0) + (Number(it.amount)||0);
+      });
+    }
     if(mode==='week' && fin){
       const net = pnl - brok;
       rows += `<div class="fin-day-row">
@@ -1336,6 +1364,7 @@ async function renderFinRange(mode){
       <div class="stat"><div class="num">${fmtRupee(totalExp)}</div><div class="label">Expenses</div></div>
     </div>
     ${mode==='week' ? `<div class="week-row">${rows || '<div class="note">No entries yet this week</div>'}</div>` : ''}
+    ${renderExpenseCategoryHTML(categoryTotals)}
     <div class="note">Gross P&L: ${fmtMoney(totalPnl)} · Net = P&L − Brokerage. Expenses are in Rupees and tracked separately, not subtracted from P&L.</div>
   `;
 }
